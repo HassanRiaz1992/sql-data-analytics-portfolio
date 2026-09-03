@@ -1,0 +1,111 @@
+able: Employee
+
++--------------+---------+
+| Column Name  | Type    |
++--------------+---------+
+| id           | int     |
+| name         | varchar |
+| salary       | int     |
+| departmentId | int     |
++--------------+---------+
+id is the primary key (column with unique values) for this table.
+departmentId is a foreign key (reference columns) of the ID from the Department table.
+Each row of this table indicates the ID, name, and salary of an employee. It also contains the ID of their department.
+ 
+
+Table: Department
+
++-------------+---------+
+| Column Name | Type    |
++-------------+---------+
+| id          | int     |
+| name        | varchar |
++-------------+---------+
+id is the primary key (column with unique values) for this table. It is guaranteed that department name is not NULL.
+Each row of this table indicates the ID of a department and its name.
+ 
+
+Write a solution to find employees who have the highest salary in each of the departments.
+
+Return the result table in any order.
+
+The result format is in the following example.
+
+ 
+
+Example 1:
+
+Input: 
+Employee table:
++----+-------+--------+--------------+
+| id | name  | salary | departmentId |
++----+-------+--------+--------------+
+| 1  | Joe   | 70000  | 1            |
+| 2  | Jim   | 90000  | 1            |
+| 3  | Henry | 80000  | 2            |
+| 4  | Sam   | 60000  | 2            |
+| 5  | Max   | 90000  | 1            |
++----+-------+--------+--------------+
+Department table:
++----+-------+
+| id | name  |
++----+-------+
+| 1  | IT    |
+| 2  | Sales |
++----+-------+
+Output: 
++------------+----------+--------+
+| Department | Employee | Salary |
++------------+----------+--------+
+| IT         | Jim      | 90000  |
+| Sales      | Henry    | 80000  |
+| IT         | Max      | 90000  |
++------------+----------+--------+
+Explanation: Max and Jim both have the highest salary in the IT department and Henry has the highest salary in the Sales department.
+
+Solution:
+
+After reviewing this LeetCode problem, I realized that the first step is to identify the highest-paid employee(s) within each department.
+
+I used the DENSE_RANK() window function to rank employees based on their salary within each department. By using PARTITION BY d.id, the ranking is performed separately for each department, while ORDER BY e.salary DESC ensures that the highest salary receives rank 1.
+
+I then used an INNER JOIN between the Employee and Department tables using departmentId and id to retrieve the department name along with the employee name and salary.
+
+Since the window function generates a rank for every employee, I used a subquery and then applied the WHERE clause to filter for drnk = 1. This returns all employees who have the highest salary in their respective departments, including cases where multiple employees share the same highest salary.
+
+Final Query
+SELECT 
+    d_name AS Department, 
+    e_name AS Employee, 
+    salary AS Salary
+FROM (
+    SELECT
+        DENSE_RANK() OVER (
+            PARTITION BY d.id
+            ORDER BY e.salary DESC
+        ) AS drnk,
+        d.name AS d_name,
+        e.name AS e_name,
+        e.salary
+    FROM Employee AS e
+    JOIN Department AS d
+        ON e.departmentId = d.id
+) AS d_rank
+WHERE drnk = 1;
+
+Key Takeaways
+
+This LeetCode problem helped me strengthen my understanding of:
+
+DENSE_RANK() window functions
+PARTITION BY for ranking data within groups
+INNER JOIN for combining related tables
+Subqueries / nested queries
+Using WHERE to filter ranked results
+Handling ties when multiple employees have the same highest salary
+
+💡 Pattern to remember:
+
+JOIN → RANK within groups → FILTER rank = 1
+
+Another small step forward in my SQL learning journey. 🚀
