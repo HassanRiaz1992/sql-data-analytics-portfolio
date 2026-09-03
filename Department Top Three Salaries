@@ -1,0 +1,150 @@
+Difficulty: Hard
+Database: MySQL
+Problem: Department Top Three Salaries
+
+Problem Description
+The goal is to find employees who are high earners in each department.
+
+An employee is considered a high earner if their salary belongs to the top three unique salaries within their department.
+
+If multiple employees have the same salary, they should all be included in the result.
+
+For example, if a department has these salaries:
+
+90000
+85000
+85000
+70000
+60000
+
+The three highest unique salaries are:
+
+90000 → Rank 1
+85000 → Rank 2
+70000 → Rank 3
+
+Therefore, all employees earning 90000, 85000, or 70000 should be returned.
+
+Approach
+I used the DENSE_RANK() window function to rank employees based on their salary within each department.
+
+The key part of the solution is:
+
+DENSE_RANK() OVER (
+    PARTITION BY d.id
+    ORDER BY e.salary DESC
+)
+
+Why DENSE_RANK()?
+DENSE_RANK() assigns the same rank to employees with the same salary.
+
+For example:
+
+Salary    Rank
+90000      1
+85000      2
+85000      2
+70000      3
+60000      4
+
+This is important because the problem asks for the top three unique salaries, not simply the top three employees.
+
+If I used ROW_NUMBER(), the two employees earning 85000 would receive different row numbers, which would not correctly represent the unique salary rankings.
+
+Step 1 — Join the Tables
+First, I join Employee and Department using the department ID:
+
+FROM Employee e
+JOIN Department d
+    ON d.id = e.departmentId
+
+This allows me to retrieve:
+
+Department name
+Employee name
+Salary
+Step 2 — Rank Salaries Within Each Department
+I use:
+
+DENSE_RANK() OVER (
+    PARTITION BY d.id
+    ORDER BY e.salary DESC
+)
+
+PARTITION BY d.id means the ranking starts again for every department.
+
+ORDER BY e.salary DESC means the highest salary receives rank 1.
+
+Step 3 — Filter the Top Three
+After calculating the rank, I use a subquery and filter:
+
+WHERE drnk <= 3
+
+This keeps employees whose salaries fall within the top three unique salary levels of their department.
+
+Final Solution
+SELECT 
+    m.d_name AS Department,
+    m.e_name AS Employee,
+    m.Salary AS Salary
+FROM (
+    SELECT 
+        DENSE_RANK() OVER (
+            PARTITION BY d.id
+            ORDER BY e.salary DESC
+        ) AS drnk,
+        d.name AS d_name,
+        e.name AS e_name,
+        e.salary
+    FROM Employee e
+    JOIN Department d
+        ON d.id = e.departmentId
+) AS m
+WHERE m.drnk <= 3;
+
+Example
+For the IT department:
+
+Salary    Rank
+90000      1
+85000      2
+85000      2
+70000      3
+69000      4
+
+The query returns:
+
+Max       90000
+Joe       85000
+Randy     85000
+Will      70000
+
+Notice that both Joe and Randy are included because they share the same salary and therefore have the same DENSE_RANK().
+
+Key SQL Concepts Learned
+This problem helped me strengthen my understanding of:
+
+DENSE_RANK() window functions
+PARTITION BY
+ORDER BY ... DESC
+INNER JOIN
+Subqueries / nested queries
+Filtering window-function results
+Handling duplicate salaries
+Ranking unique values within groups
+Pattern to Remember
+A useful pattern from this problem is:
+
+JOIN → RANK within groups → FILTER the required ranks
+
+JOIN
+  ↓
+DENSE_RANK()
+  ↓
+PARTITION BY department
+  ↓
+ORDER BY salary DESC
+  ↓
+WHERE rank <= 3
+
+This problem was a great exercise in understanding how window functions can be combined with joins and subqueries to solve grouped ranking problems.
