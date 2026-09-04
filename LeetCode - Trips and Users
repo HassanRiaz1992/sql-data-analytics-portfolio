@@ -1,0 +1,157 @@
+LeetCode: Trips and Users
+Difficulty: Hard
+Topic: SQL / MySQL
+
+This problem asks us to calculate the cancellation rate of taxi trips for each day between 2013-10-01 and 2013-10-03.
+
+A trip should only be included when:
+
+The client is not banned.
+The driver is not banned.
+
+The cancellation rate is calculated as:
+
+Cancellation Rate =
+Number of Cancelled Trips / Total Eligible Trips
+
+
+Cancelled trips include:
+
+cancelled_by_driver
+cancelled_by_client
+
+The final result should be rounded to two decimal places.
+
+Approach
+
+Instead of trying to write the complete query at once, I broke the problem into smaller SQL operations:
+
+JOIN → FILTER → CASE → SUM → COUNT → DIVIDE → ROUND → GROUP BY
+
+1. Join Users twice
+
+The Trips table contains both client_id and driver_id.
+
+Therefore, we need to join the Users table twice:
+
+JOIN Users uc
+    ON uc.users_id = t.client_id
+
+JOIN Users d
+    ON d.users_id = t.driver_id
+
+
+Here:
+
+uc represents the client.
+d represents the driver.
+2. Remove banned users
+
+Both the client and driver must be unbanned:
+
+WHERE uc.banned = 'No'
+  AND d.banned = 'No'
+
+3. Filter the dates
+
+The problem only requires trips from October 1 to October 3, 2013:
+
+AND t.request_at BETWEEN '2013-10-01' AND '2013-10-03'
+
+
+Since request_at is stored as a varchar, the dates are written as strings.
+
+4. Identify cancelled trips
+
+A CASE statement converts cancelled trips into 1 and completed trips into 0:
+
+CASE
+    WHEN t.status IN ('cancelled_by_driver', 'cancelled_by_client')
+    THEN 1
+    ELSE 0
+END
+
+
+Then:
+
+SUM(CASE ...)
+
+
+gives us the total number of cancelled trips.
+
+5. Calculate cancellation rate
+
+The cancellation rate is:
+
+SUM(CASE ...) / COUNT(*)
+
+
+Finally, ROUND(..., 2) gives us two decimal places.
+
+6. Group by day
+
+We need a separate cancellation rate for each day:
+
+GROUP BY t.request_at
+
+MySQL Solution
+SELECT
+    t.request_at AS Day,
+    ROUND(
+        SUM(
+            CASE
+                WHEN t.status IN (
+                    'cancelled_by_driver',
+                    'cancelled_by_client'
+                )
+                THEN 1
+                ELSE 0
+            END
+        ) / COUNT(*),
+        2
+    ) AS Cancellation_Rate
+FROM Trips t
+JOIN Users uc
+    ON uc.users_id = t.client_id
+JOIN Users d
+    ON d.users_id = t.driver_id
+WHERE uc.banned = 'No'
+  AND d.banned = 'No'
+  AND t.request_at BETWEEN '2013-10-01' AND '2013-10-03'
+GROUP BY t.request_at;
+
+Expected Output
+Day	Cancellation Rate
+2013-10-01	0.33
+2013-10-02	0.00
+2013-10-03	0.50
+Key SQL Concepts
+JOIN
+Multiple joins to the same table
+CASE WHEN
+SUM()
+COUNT()
+ROUND()
+GROUP BY
+BETWEEN
+Filtering data using multiple conditions
+Key Takeaway
+
+The main lesson from this problem was to avoid treating a difficult SQL problem as one large query.
+
+Break it down:
+
+1. Which tables do I need?
+2. How do they connect?
+3. Which rows should be filtered?
+4. What should I count?
+5. What should I sum?
+6. What formula should I apply?
+7. How should I group the result?
+
+
+Once each part is clear, the final SQL query becomes much easier to construct.
+
+Practice Platform: LeetCode
+Difficulty: Hard
+Language: MySQL
